@@ -54,9 +54,14 @@ client.on("interactionCreate", async (interaction) => {
           interaction.member instanceof GuildMember &&
           interaction.member.voice.channel
         ) {
-          if (interaction.channel.isVoice()) {
+          const channel = interaction.channel.isThread() ? interaction.channel.parent : interaction.channel;
+          if (!channel.permissionsFor(client.user).has(Permissions.FLAGS.VIEW_CHANNEL | Permissions.FLAGS.SEND_MESSAGES | Permissions.FLAGS.SEND_MESSAGES_IN_THREADS | Permissions.FLAGS.CREATE_PUBLIC_THREADS)) {
+            await interaction.reply("このチャンネルでは議事録用のスレッドを作成できません\nBotの権限を確認してください");
+          } else if (interaction.channel.isVoice()) {
             // VCのテキストチャンネルの場合スレッドが作れない
             await interaction.reply("VCのテキストチャンネルでは議事録の記録を行うことができません");
+          } else if (!interaction.member.voice.channel.permissionsFor(client.user).has(Permissions.FLAGS.CONNECT)) {
+            await interaction.reply("VCに入る権限がありません\nBotの権限を確認してください");
           } else {
             // VCに参加
             const voiceChannel = interaction.member.voice.channel;
@@ -71,7 +76,6 @@ client.on("interactionCreate", async (interaction) => {
             const startTime = Date.now();
             const startDate = new Date(startTime).toISOString().replace(/T/, ' ').replace(/\..+/, '');
             const startMessage = `💬 ${interaction.member.displayName} が議事録の記録を開始しました`;
-            const channel = interaction.channel.isThread() ? interaction.channel.parent : interaction.channel;
             const channelMessage = await channel.send(startMessage);
             const sessionThread = await channelMessage.startThread({
               name: `💬 ${startDate}`.replace(/:/g, '-'),
