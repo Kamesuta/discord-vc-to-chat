@@ -54,29 +54,35 @@ client.on("interactionCreate", async (interaction) => {
           interaction.member instanceof GuildMember &&
           interaction.member.voice.channel
         ) {
-          // VCに参加
-          const voiceChannel = interaction.member.voice.channel;
-          joinVoiceChannel({
-            channelId: voiceChannel.id,
-            guildId: voiceChannel.guild.id,
-            selfDeaf: false,
-            selfMute: true,
-            adapterCreator: voiceChannel.guild.voiceAdapterCreator,
-          });
-          // 議事録のスレッドを作成
-          const startTime = Date.now();
-          const startDate = new Date(startTime).toISOString().replace(/T/, ' ').replace(/\..+/, '');
-          const startMessage = `💬 ${interaction.member.displayName} が議事録の記録を開始しました`;
-          const channelMessage = await interaction.channel.send(startMessage);
-          const sessionThread = await channelMessage.startThread({
-            name: `💬 ${startDate}`.replace(/:/g, '-'),
-            autoArchiveDuration: 60,
-            reason: startMessage,
-          });
-          // マップに追加
-          sessionThreads[interaction.guildId] = sessionThread;
+          if (interaction.channel.isVoice()) {
+            // VCのテキストチャンネルの場合スレッドが作れない
+            await interaction.reply("VCのテキストチャンネルでは議事録の記録を行うことができません");
+          } else {
+            // VCに参加
+            const voiceChannel = interaction.member.voice.channel;
+            joinVoiceChannel({
+              channelId: voiceChannel.id,
+              guildId: voiceChannel.guild.id,
+              selfDeaf: false,
+              selfMute: true,
+              adapterCreator: voiceChannel.guild.voiceAdapterCreator,
+            });
+            // 議事録のスレッドを作成
+            const startTime = Date.now();
+            const startDate = new Date(startTime).toISOString().replace(/T/, ' ').replace(/\..+/, '');
+            const startMessage = `💬 ${interaction.member.displayName} が議事録の記録を開始しました`;
+            const channel = interaction.channel.isThread() ? interaction.channel.parent : interaction.channel;
+            const channelMessage = await channel.send(startMessage);
+            const sessionThread = await channelMessage.startThread({
+              name: `💬 ${startDate}`.replace(/:/g, '-'),
+              autoArchiveDuration: 60,
+              reason: startMessage,
+            });
+            // マップに追加
+            sessionThreads[interaction.guildId] = sessionThread;
 
-          await interaction.reply("議事録の記録を開始しました");
+            await interaction.reply("議事録の記録を開始しました");
+          }
         } else {
           await interaction.reply("VCに入ってからコマンドを使用してください");
         }
@@ -98,7 +104,7 @@ client.on("interactionCreate", async (interaction) => {
           // アーカイブ化
           await sessionThread.setArchived(true);
           // マップから削除
-          sessionThreads[interaction.guildId] = null;    
+          sessionThreads[interaction.guildId] = null;
         }
       }
     }

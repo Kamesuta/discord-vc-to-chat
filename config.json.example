@@ -1,4 +1,3 @@
 {
-  "token": "Your bot token",
-  "guildId": "Guild where you have your bot"
+  "token": "Your bot token"
 }
